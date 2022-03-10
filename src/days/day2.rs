@@ -4,7 +4,7 @@ pub fn day2() {
     let lines = get_input_lines(2);
 
     let instructions = lines
-        .into_iter()    
+        .into_iter()
         .map(|l| l.into())
         .map(|l: SubmarineDirection| l.into())
         .collect::<Vec<_>>();
