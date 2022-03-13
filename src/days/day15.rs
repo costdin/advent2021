@@ -1,6 +1,6 @@
 use super::{get_number_matrix_input, neighborhood};
 use std::cmp::{min, Reverse};
-use std::collections::{HashSet, BinaryHeap};
+use std::collections::{BinaryHeap, HashSet};
 
 pub fn day15() {
     let lines = get_number_matrix_input(15);
@@ -21,7 +21,7 @@ fn spf(nodes: &Vec<Vec<u8>>, destination: [usize; 2]) -> u32 {
     let mut frontier_index = HashSet::<[usize; 2]>::new();
     let mut frontier: BinaryHeap<Reverse<(u32, [usize; 2])>> = neighborhood(&[0, 0], &boundaries)
         .into_iter()
-        .map(|[x, y]| (get_node(nodes, [x, y]), [x, y]))
+        .map(|n| (get_node(nodes, &n), n))
         .map(Reverse)
         .collect();
 
@@ -32,20 +32,18 @@ fn spf(nodes: &Vec<Vec<u8>>, destination: [usize; 2]) -> u32 {
         if destination == next {
             return next_weight;
         } else {
-            for [x, y] in neighborhood(&next, &boundaries)
+            for n in neighborhood(&next, &boundaries)
                 .into_iter()
                 .filter(|n| !visited.contains(n))
+                .filter(|n| frontier_index.insert(*n))
             {
-                if !frontier_index.contains(&[x, y]) {
-                    frontier.push(Reverse((get_node(nodes, [x, y]) + next_weight, [x, y])));
-                    frontier_index.insert([x, y]);
-                }
+                frontier.push(Reverse((get_node(nodes, &n) + next_weight, n)));
             }
         }
     }
 }
 
-fn get_node(nodes: &Vec<Vec<u8>>, ix: [usize; 2]) -> u32 {
+fn get_node(nodes: &Vec<Vec<u8>>, ix: &[usize; 2]) -> u32 {
     if ix[0] < nodes.len() && ix[1] < nodes[0].len() {
         nodes[ix[0]][ix[1]] as u32
     } else {
