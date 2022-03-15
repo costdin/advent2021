@@ -8,9 +8,9 @@ pub fn day16() {
         .map(decode_byte)
         .collect::<Vec<_>>();
 
-    let bitarray = BitArray::new(buffer.clone());
+    let mut bit_array = BitArray::new(buffer);
 
-    let (packet, _) = decode_packet(&buffer[..], 0);
+    let packet = decode_packet(&mut bit_array);
 
     println!(
         "DAY 16\nSolution 1: {}\nSolution 2: {}",
@@ -98,25 +98,25 @@ impl Packet {
     }
 }
 
-fn decode_packet(buffer: &[u8], offset: usize) -> (Packet, usize) {
-    let version = take_bits(buffer, offset, 3);
-    let type_id = take_bits(buffer, offset + 3, 3);
+fn decode_packet(bit_array: &mut BitArray) -> Packet {
+    let version = bit_array.take_bits(3);
+    let type_id = bit_array.take_bits(3);
 
     if type_id == 4 {
-        let (value, offset) = decode_literal(buffer, offset + 6);
+        let value = decode_literal(bit_array);
         let packet = Packet {
             version,
             payload: Payload::Literal(value),
         };
 
-        (packet, offset)
+        packet
     } else {
-        let lenght_type = take_bits(buffer, offset + 6, 1);
+        let lenght_type = bit_array.take_bits(1);
 
-        let (sub_packets, offset) = if lenght_type == 0 {
-            decode_sized_operator(buffer, offset + 7)
+        let sub_packets = if lenght_type == 0 {
+            decode_sized_operator(bit_array)
         } else {
-            decode_count_operator(buffer, offset + 7)
+            decode_count_operator(bit_array)
         };
 
         let packet = Packet {
@@ -124,61 +124,49 @@ fn decode_packet(buffer: &[u8], offset: usize) -> (Packet, usize) {
             payload: Payload::Operator(type_id.into(), sub_packets),
         };
 
-        (packet, offset)
+        packet
     }
 }
 
-fn decode_sized_operator(buffer: &[u8], mut offset: usize) -> (Vec<Packet>, usize) {
-    let length = take_bits(buffer, offset, 15);
-    offset += 15;
-    let end = offset + length as usize;
+fn decode_sized_operator(bit_array: &mut BitArray) -> Vec<Packet> {
+    let length = bit_array.take_bits(15);
+    let end = bit_array.offset + length as usize;
 
     let mut packets = vec![];
 
-    while offset < end {
-        let (packet, new_offset) = decode_packet(buffer, offset);
-        offset = new_offset;
+    while bit_array.offset < end {
+        let packet = decode_packet(bit_array);
         packets.push(packet);
     }
 
-    (packets, offset)
+    packets
 }
 
-fn decode_count_operator(buffer: &[u8], mut offset: usize) -> (Vec<Packet>, usize) {
-    let count = take_bits(buffer, offset, 11) as usize;
-    offset += 11;
+fn decode_count_operator(bit_array: &mut BitArray) -> Vec<Packet> {
+    let count = bit_array.take_bits(11) as usize;
 
-    let mut packets = vec![];
-    while packets.len() < count {
-        let (packet, new_offset) = decode_packet(buffer, offset);
-        offset = new_offset;
-        packets.push(packet);
-    }
-
-    (packets, offset)
+    (0..count).map(|_| decode_packet(bit_array)).collect()
 }
 
-fn decode_literal(buffer: &[u8], mut offset: usize) -> (u128, usize) {
+fn decode_literal(bit_array: &mut BitArray) -> u128 {
     let mut value = 0u128;
 
     loop {
-        let block = take_bits(buffer, offset, 5);
+        let block = bit_array.take_bits(5);
         value = (value << 4) + (block & 0x0F) as u128;
-
-        offset += 5;
 
         if block & 0x10 == 0 {
             break;
         }
     }
 
-    (value, offset)
+    value
 }
 
 static MASKS: &'static [u8] = &[0, 1, 3, 7, 15, 31, 63, 127, 255];
 
 struct BitArray {
-    buffer: Vec<u8>,
+    _buffer: Vec<u8>,
     offset: usize,
     ptr: *const u8,
 }
@@ -188,57 +176,50 @@ impl BitArray {
         let ptr = buffer.as_ptr();
 
         BitArray {
-            buffer,
+            _buffer: buffer,
             offset: 0,
             ptr,
         }
     }
 
+    // I'm using pointers here, just for fun. Or maybe to avoid bounds checking?
     fn take_bits(&mut self, count: usize) -> u16 {
-        let o = count + self.offset;
-        if o < 8 {
-            self.offset += count;
-
-            ((unsafe { *self.ptr } >> (8 - o)) & MASKS[count]) as u16
-        } else if o == 8 {
-            self.offset = (self.offset + count) % 8;
-
-            let r = ((unsafe { *self.ptr } >> (8 - o)) & MASKS[count]) as u16;
-            self.ptr = unsafe { self.ptr.offset(1) };
-
-            r
-        } else if count <= 8 {
-            let left_bit = 8 - self.offset;
-            let right_shift = 8 - (count - left_bit);
-            self.offset = (self.offset + count) % 8;
-
-            let r = ((unsafe { *self.ptr } & MASKS[left_bit]) << (count - left_bit)
-                | (unsafe { *self.ptr.offset(1) } >> right_shift) & MASKS[count - left_bit])
-                as u16;
-
-            self.ptr = unsafe { self.ptr.offset(1) };
-
-            r
-        } else {
-            self.take_bits(8) << (count - 8) | self.take_bits(count - 8)
+        if count > 8 {
+            return self.take_bits(8) << (count - 8) | self.take_bits(count - 8)
         }
-    }
-}
 
-fn take_bits(buffer: &[u8], offset: usize, count: usize) -> u16 {
-    let ptr = buffer.as_ptr();
-    let off = unsafe { ptr.offset(offset as isize / 8) };
-    let o = count + (offset % 8);
-    if o <= 8 {
-        ((unsafe { *off } >> (8 - o)) & MASKS[count]) as u16
-    } else if count <= 8 {
-        let left_bit = 8 - offset % 8;
-        let right_shift = 8 - (count - left_bit);
+        // offset from the first bit of the current byte
+        let end_offset = count + (self.offset % 8);
 
-        ((unsafe { *off } & MASKS[left_bit]) << (count - left_bit)
-            | (unsafe { *off.offset(1) } >> right_shift) & MASKS[count - left_bit]) as u16
-    } else {
-        take_bits(buffer, offset, 8) << (count - 8) | take_bits(buffer, offset + 8, count - 8)
+        /*
+            A and B are 2 bytes, 'x' are bits to be returned:
+                        |aaaa aaaa bbbb bbbb|
+            first case: |xxxx xxaa bbbb bbbb| // the next bit will still be from A
+            first case: |axxx xxxa bbbb bbbb| // the next bit will still be from A
+            second case:|aaxx xxxx bbbb bbbb| // the next bit will be from B
+            second case:|xxxx xxxx bbbb bbbb| // the next bit will be from B
+            third case: |aaax xxxx xxbb bbbb| // the bits to be returned come from both A and B
+        */
+
+        let result = if end_offset < 8 { // first case: all the bits are in the current byte, as well as the next bit
+            ((unsafe { *self.ptr } >> (8 - end_offset)) & MASKS[count]) as u16
+        } else if end_offset == 8 { // second case: all the bits are in the current byte, but the next bit is in the next byte
+            let r = ((unsafe { *self.ptr } >> (8 - end_offset)) & MASKS[count]) as u16;
+            self.ptr = unsafe { self.ptr.offset(1) };
+
+            r
+        } else { // third case: bits are in the current and in the next byte
+            let left_bit = 8 - (self.offset % 8);
+            let right_shift = 16 - end_offset;
+
+            let r = (unsafe { *self.ptr } & MASKS[left_bit]) << (count - left_bit);
+            self.ptr = unsafe { self.ptr.offset(1) };
+
+            (r | (unsafe { *self.ptr } >> right_shift) & MASKS[count - left_bit]) as u16
+        };
+
+        self.offset += count;
+        result
     }
 }
 
