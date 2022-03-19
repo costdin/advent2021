@@ -185,7 +185,7 @@ impl BitArray {
     // I'm using pointers here, just for fun. Or maybe to avoid bounds checking?
     fn take_bits(&mut self, count: usize) -> u16 {
         if count > 8 {
-            return self.take_bits(8) << (count - 8) | self.take_bits(count - 8)
+            return self.take_bits(8) << (count - 8) | self.take_bits(count - 8);
         }
 
         // offset from the first bit of the current byte
@@ -201,14 +201,17 @@ impl BitArray {
             third case: |aaax xxxx xxbb bbbb| // the bits to be returned come from both A and B
         */
 
-        let result = if end_offset < 8 { // first case: all the bits are in the current byte, as well as the next bit
+        let result = if end_offset < 8 {
+            // first case: all the bits are in the current byte, as well as the next bit
             ((unsafe { *self.ptr } >> (8 - end_offset)) & MASKS[count]) as u16
-        } else if end_offset == 8 { // second case: all the bits are in the current byte, but the next bit is in the next byte
+        } else if end_offset == 8 {
+            // second case: all the bits are in the current byte, but the next bit is in the next byte
             let r = ((unsafe { *self.ptr } >> (8 - end_offset)) & MASKS[count]) as u16;
             self.ptr = unsafe { self.ptr.offset(1) };
 
             r
-        } else { // third case: bits are in the current and in the next byte
+        } else {
+            // third case: bits are in the current and in the next byte
             let left_bit = 8 - (self.offset % 8);
             let right_shift = 16 - end_offset;
 

@@ -9,6 +9,7 @@ mod day13;
 mod day14;
 mod day15;
 mod day16;
+mod day17;
 mod day2;
 mod day3;
 mod day4;
@@ -26,6 +27,7 @@ pub use day13::day13;
 pub use day14::day14;
 pub use day15::day15;
 pub use day16::day16;
+pub use day17::day17;
 pub use day2::day2;
 pub use day3::day3;
 pub use day4::day4;
@@ -134,4 +136,8 @@ fn diagonal_neighborhood(coord: &[usize; 2], boundaries: &[usize; 2]) -> Vec<[us
             [x + 1, y + 1],
         ],
     }
+}
+
+fn div_roundup(dividend: i32, divider: i32) -> i32 {
+    1 + (dividend - 1) / divider
 }
