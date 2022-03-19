@@ -11,17 +11,6 @@ pub fn day17() {
     let min_x = ((((8 * area.x[0] + 1) as f32).sqrt() + 1.0) / 2.0).floor() as i32;
     let max_asymptotic_x = ((((8 * area.x[1] - 1) as f32).sqrt() - 1.0) / 2.0).floor() as i32;
 
-
-    /* OLD SOLUTION
-        let solution2 = (area.y[0]..(solution1 + 1))
-            .flat_map(|y| thing(y, area.y))
-            .flat_map(|(y, i)| (min_x..area.x[1] + 1).map(move |x| (x, y, i)))
-            .filter(|(x, y, i)| visits_area(&[*x, *y], &area, *i))
-            .map(|(x, y, _)| (x, y))
-            .collect::<HashSet<_>>()
-            .len();
-    */
-
     let solution2 = (area.y[0]..(solution1 + 1))
         .map(|y| (y, y_interceptions(y, area.y)))
         .flat_map(|(y, i)| x_ranges(&area, &i, min_x, max_asymptotic_x).map(move |x| (x, y)))
@@ -90,41 +79,6 @@ fn x_ranges(
         );
     }
 }
-
-/* OLD SOLUTION
-fn thing(y: i32, range: [i32; 2]) -> Vec<(i32, i32)> {
-    let mut result = vec![];
-
-    let (mut i, mut pos) = if y > 0 {
-        (1 + 2 * y, 0)
-    } else {
-        (1, y)
-    };
-
-    while pos >= range[0] {
-        if pos <= range[1] {
-            result.push((y, i));
-        }
-
-        pos += y - i;
-
-        i += 1;
-    }
-
-    result
-}
-
-fn visits_area(initial_direction: &[i32; 2], area: &Area, max_step: i32) -> bool {
-    let x_position = match (initial_direction[0], max_step) {
-        (n, 1) => n,
-        (n, i) if i >= n => n * (n + 1) / 2,
-        (n, i) if i % 2 == 0 => (2 * n - i + 1) * (i / 2),
-        (n, i) => (2 * n - i + 1) * (i / 2) + n - i / 2,
-    };
-
-    x_position >= area.x[0] && x_position <= area.x[1]
-}
-*/
 
 struct Area {
     x: [i32; 2],
