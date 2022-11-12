@@ -15,6 +15,7 @@ pub fn day13() {
 
     println!("DAY 13\nSolution 1: {}\nSolution 2:", result1);
     print_output(coords);
+    println!()
 }
 
 fn parse_input(lines: Vec<String>) -> (Vec<[u32; 2]>, Vec<Fold>) {

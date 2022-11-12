@@ -2,7 +2,7 @@ mod days;
 use days::*;
 
 fn main() -> Result<(), ()> {
-    /*day1();
+    day1();
     day2();
     day3();
     day4();
@@ -17,7 +17,7 @@ fn main() -> Result<(), ()> {
     day13();
     day14();
     day15();
-    day16();*/
+    day16();
     day17();
 
     Ok(())
